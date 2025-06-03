@@ -1,0 +1,256 @@
+-- SQL DDL untuk Struktur Database Aplikasi Shopee (MySQL)
+
+-- 1. Users
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE,
+    email VARCHAR(100) UNIQUE,
+    password_hash VARCHAR(255),
+    role ENUM('buyer', 'seller', 'admin'),
+    nama_lengkap VARCHAR(100),
+    no_hp VARCHAR(20),
+    tanggal_daftar DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status_akun ENUM('aktif', 'nonaktif') DEFAULT 'aktif'
+);
+
+-- 2. Sellers
+CREATE TABLE sellers (
+    seller_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    nama_toko VARCHAR(100),
+    deskripsi_toko TEXT,
+    rating DECIMAL(3,2) DEFAULT 0.0,
+    status_toko ENUM('aktif', 'nonaktif') DEFAULT 'aktif',
+    tanggal_gabung DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- 3. Categories
+CREATE TABLE categories (
+    kategori_id INT AUTO_INCREMENT PRIMARY KEY,
+    nama_kategori VARCHAR(100),
+    parent_kategori_id INT DEFAULT NULL,
+    FOREIGN KEY (parent_kategori_id) REFERENCES categories(kategori_id)
+);
+
+-- 4. Products
+CREATE TABLE products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    seller_id INT,
+    nama_produk VARCHAR(150),
+    deskripsi TEXT,
+    harga DECIMAL(12,2),
+    stok INT,
+    berat DECIMAL(6,2),
+    kategori_id INT,
+    status ENUM('aktif', 'nonaktif') DEFAULT 'aktif',
+    tanggal_ditambahkan DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (seller_id) REFERENCES sellers(seller_id),
+    FOREIGN KEY (kategori_id) REFERENCES categories(kategori_id)
+);
+
+-- 5. Product Images
+CREATE TABLE product_images (
+    image_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    url_gambar TEXT,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- 6. Cart Items
+CREATE TABLE cart_items (
+    cart_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    product_id INT,
+    jumlah INT,
+    tanggal_ditambahkan DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- 7. User Addresses
+CREATE TABLE user_addresses (
+    alamat_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    nama_penerima VARCHAR(100),
+    alamat_lengkap TEXT,
+    kota VARCHAR(100),
+    provinsi VARCHAR(100),
+    kode_pos VARCHAR(10),
+    no_hp VARCHAR(20),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- 8. Orders
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    total_harga DECIMAL(12,2),
+    status_pesanan ENUM('diproses', 'dikirim', 'selesai', 'dibatalkan') DEFAULT 'diproses',
+    metode_pengiriman VARCHAR(100),
+    alamat_id INT,
+    tanggal_pesanan DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (alamat_id) REFERENCES user_addresses(alamat_id)
+);
+
+-- 9. Order Details
+CREATE TABLE order_details (
+    order_detail_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    product_id INT,
+    jumlah INT,
+    harga_satuan DECIMAL(12,2),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- 10. Payments
+CREATE TABLE payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    metode_pembayaran VARCHAR(100),
+    status_pembayaran ENUM('pending', 'berhasil', 'gagal') DEFAULT 'pending',
+    tanggal_bayar DATETIME,
+    bukti_transfer TEXT,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id)
+);
+
+-- 11. Shippings
+CREATE TABLE shippings (
+    shipping_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    kurir VARCHAR(100),
+    no_resi VARCHAR(100),
+    status_pengiriman ENUM('diproses', 'dikirim', 'diterima') DEFAULT 'diproses',
+    tanggal_kirim DATETIME,
+    tanggal_terima DATETIME,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id)
+);
+
+-- 12. Reviews
+CREATE TABLE reviews (
+    review_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    product_id INT,
+    rating INT,
+    ulasan TEXT,
+    tanggal_review DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- 13. Vouchers
+CREATE TABLE vouchers (
+    voucher_id INT AUTO_INCREMENT PRIMARY KEY,
+    kode_voucher VARCHAR(50) UNIQUE,
+    jenis_diskon ENUM('persen', 'potongan', 'ongkir'),
+    nilai_diskon DECIMAL(10,2),
+    minimal_belanja DECIMAL(12,2),
+    tanggal_mulai DATE,
+    tanggal_berakhir DATE
+);
+
+-- 14. Product Voucher
+CREATE TABLE product_voucher (
+    product_id INT,
+    voucher_id INT,
+    PRIMARY KEY (product_id, voucher_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (voucher_id) REFERENCES vouchers(voucher_id)
+);
+
+-- 15. ShopeePay
+CREATE TABLE shopeepay (
+    shopeepay_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    saldo DECIMAL(12,2) DEFAULT 0,
+    status ENUM('aktif', 'nonaktif') DEFAULT 'aktif',
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- 16. ShopeePay Transactions
+CREATE TABLE shopeepay_transactions (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    shopeepay_id INT,
+    tipe ENUM('debit', 'kredit'),
+    jumlah DECIMAL(12,2),
+    deskripsi TEXT,
+    tanggal DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (shopeepay_id) REFERENCES shopeepay(shopeepay_id)
+);
+
+-- 17. Wishlist
+CREATE TABLE wishlist (
+    wishlist_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    product_id INT,
+    tanggal_ditambahkan DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- 18. Live Sessions
+CREATE TABLE live_sessions (
+    session_id INT AUTO_INCREMENT PRIMARY KEY,
+    seller_id INT,
+    judul VARCHAR(100),
+    deskripsi TEXT,
+    waktu_mulai DATETIME,
+    status ENUM('berlangsung', 'selesai', 'dibatalkan'),
+    FOREIGN KEY (seller_id) REFERENCES sellers(seller_id)
+);
+
+-- 19. Live Products
+CREATE TABLE live_products (
+    session_id INT,
+    product_id INT,
+    PRIMARY KEY (session_id, product_id),
+    FOREIGN KEY (session_id) REFERENCES live_sessions(session_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- 20. Chat Threads
+CREATE TABLE chat_threads (
+    thread_id INT AUTO_INCREMENT PRIMARY KEY,
+    buyer_id INT,
+    seller_id INT,
+    tanggal_mulai DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (buyer_id) REFERENCES users(user_id),
+    FOREIGN KEY (seller_id) REFERENCES users(user_id)
+);
+
+-- 21. Chat Messages
+CREATE TABLE chat_messages (
+    message_id INT AUTO_INCREMENT PRIMARY KEY,
+    thread_id INT,
+    pengirim_id INT,
+    isi_pesan TEXT,
+    waktu_kirim DATETIME DEFAULT CURRENT_TIMESTAMP,
+    tipe_pesan ENUM('text', 'image') DEFAULT 'text',
+    FOREIGN KEY (thread_id) REFERENCES chat_threads(thread_id),
+    FOREIGN KEY (pengirim_id) REFERENCES users(user_id)
+);
+
+-- 22. Notifications
+CREATE TABLE notifications (
+    notif_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    judul VARCHAR(100),
+    isi TEXT,
+    status_baca ENUM('belum_dibaca', 'dibaca') DEFAULT 'belum_dibaca',
+    tanggal_kirim DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- 23. Admin Logs
+CREATE TABLE admin_logs (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT,
+    aksi VARCHAR(100),
+    entitas VARCHAR(50),
+    entitas_id INT,
+    waktu_aksi DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(50),
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
